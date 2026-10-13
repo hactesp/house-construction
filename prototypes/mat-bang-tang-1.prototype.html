@@ -1,0 +1,86 @@
+<!doctype html>
+<!-- PROTOTYPE (vứt đi): 3 phương án mặt bằng tầng 1, chuyển bằng ?variant=A|B|C. Ticket: Bố trí mặt bằng tầng 1 (#7).
+     Cố định: Vệ sinh góc sau-Trái, Bếp khô ngay trước Vệ sinh, cửa hông ra Bếp ướt (~3m từ tường sau), cửa chính giữa Mặt tiền,
+     trần bình thường (không thông tầng). Phòng ngủ: 1 Ông bà, 1 Gia chủ. Số đo gần đúng, chưa trừ bề dày tường.
+     KẾT LUẬN: chọn A (cánh phòng ngủ dọc tường Phải, cầu thang thẳng ở dải giữa, phòng khách hết bề ngang Mặt tiền). -->
+<html lang="vi"><head><meta charset="utf-8"><title>PROTOTYPE – Mặt bằng tầng 1</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;padding:16px 16px 80px;background:#f6f4ef;color:#222;display:flex;gap:24px;flex-wrap:wrap}
+svg{background:#fff;border:1px solid #ccc}
+.info{max-width:440px}.info h2{margin:.2em 0}.info li{margin:.25em 0}
+.tag{font-size:12px;color:#666} table{border-collapse:collapse;font-size:13px} td{padding:2px 8px;border-bottom:1px solid #ddd}
+#bar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#111;color:#fff;border-radius:999px;padding:8px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 4px 16px #0005;font-size:14px}
+#bar button{background:#333;color:#fff;border:0;border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:16px}
+</style></head><body>
+<svg id="plan" width="880" height="800"></svg>
+<div class="info" id="info"></div>
+<div id="bar"><button id="prev">←</button><span id="label"></span><button id="next">→</button></div>
+<script>
+// 40px = 1m. Khu đất 20 × 18m; phía trên là ranh sau, đường ở dưới. Nhà: x 7,0–15,5; y 0,3–12,3.
+const S=40,OX=40,OY=40,m=v=>v*S;
+const C={wc:'#a5f3fc',bk:'#fed7aa',ng:'#c7d2fe',kh:'#bbf7d0',an:'#d9f99d',th:'#e5e7eb',hl:'#f5f5f4',sa:'#fef3c7'};
+const R=(x,y,w,h,fill,stroke='#555',txt='',dash='',fs=12)=>
+  `<rect x="${OX+m(x)}" y="${OY+m(y)}" width="${m(w)}" height="${m(h)}" fill="${fill}" stroke="${stroke}" ${dash?`stroke-dasharray="${dash}"`:''}/>`+
+  (txt?txt.split('|').map((t,i,a)=>`<text x="${OX+m(x+w/2)}" y="${OY+m(y+h/2)+(i-(a.length-1)/2)*14}" font-size="${fs}" text-anchor="middle" dominant-baseline="middle">${t}</text>`).join(''):'');
+const T=(x,y,t,s=11,c='#333',a='middle')=>`<text x="${OX+m(x)}" y="${OY+m(y)}" font-size="${s}" fill="${c}" text-anchor="${a}">${t}</text>`;
+// phòng: [tên, x, y, w, h, màu]; diện tích tự tính
+const room=(n,x,y,w,h,c)=>R(x,y,w,h,C[c],'#111',`${n}|${(w*h).toFixed(1)} m²`);
+const dv=(x,y,h=0.9)=>R(x-0.08,y,0.16,h,'#16a34a','#166534'); // cửa trên tường đứng
+const dh=(x,y,w=0.9)=>R(x,y-0.08,w,0.16,'#16a34a','#166534'); // cửa trên tường ngang
+const stair=(x,y,w,h,dir)=>{let s=R(x,y,w,h,C.th,'#111');const n=dir==='v'?Math.floor(h/0.28):Math.floor(w/0.28);
+  for(let i=1;i<n;i++)s+=dir==='v'?R(x,y+i*h/n,w,0,'none','#888'):R(x+i*w/n,y,0,h,'none','#888');
+  return s+T(x+w/2,y+h/2+4,'Cầu thang',11,'#111');};
+function base(){
+  return R(0,0,20,18,'#eef5e9','#333')+
+    R(0.3,0.3,6.7,5.7,'#fde2e2','#b91c1c','Bếp ướt|(mái)','8 4',11)+
+    R(15.9,6.5,2.5,5,'#e0e7ff','#6366f1','Ô tô','',11)+
+    R(13.5,13.2,2,1.4,'#fde68a','#b45309','Xe máy','',10)+
+    R(7,0.3,8.5,12,'#fff','#111')+
+    T(10,18.9,'ĐƯỜNG  (Mặt tiền hướng Tây/Tây Nam, nắng chiều)',13,'#000')+
+    T(3.5,-0.4,'Khoảng lùi Trái 7,0m')+T(17.75,-0.4,'Phải 4,5m')+T(11.25,-0.4,'ranh sau 0,3m')+
+    T(11.25,13.6,'↑ cửa chính',11,'#166534');
+}
+const fixed=()=>dv(7,3.0)+T(6.9,3.45,'cửa hông',10,'#166534','end')+dh(10.65,12.3,1.2);
+const V={
+ A:{name:'Cánh phòng ngủ dọc tường Phải',
+  rooms:[['Vệ sinh',7,0.3,4,1.7,'wc'],['Bếp khô',7,2,3,3.2,'bk'],['Ăn',7,5.2,3,2.9,'an'],['Hành lang',11,0.3,1.2,7.8,'hl'],
+         ['Ngủ Gia chủ',12.2,0.3,3.3,3.8,'ng'],['Ngủ Ông bà',12.2,4.1,3.3,4,'ng'],['Khách',7,8.1,8.5,4.2,'kh']],
+  extra:()=>stair(10,2,1,5.2,'v')+dv(11,0.6)+dv(12.2,1.2)+dv(12.2,6.6),
+  pros:['Hai phòng ngủ ở chung một cánh yên tĩnh, tách hẳn khu khách và khu bếp','Phòng khách rộng hết bề ngang Mặt tiền, đón khách thoáng','Hành lang thẳng nối Ông bà, Gia chủ và Vệ sinh; Ông bà đi Vệ sinh ~6m, không qua phòng khách','Bếp khô – Ăn – Khách liền một dải bên Trái, ra Bếp ướt gần'],
+  cons:['Cửa sổ hai phòng ngủ quay ra Khoảng lùi Phải, chỗ đỗ ô tô (tiếng xe, khí thải khi nổ máy)','Phòng khách hứng trọn nắng chiều Mặt tiền, phụ thuộc giải pháp che nắng','Cầu thang thẳng dài ~5,2m chiếm dải giữa; hành lang dài ~7,8m tốn diện tích'],
+  path:'Ông bà → Vệ sinh: theo hành lang, khoảng 6m.'},
+ B:{name:'Phòng ngủ phía trước, sinh hoạt phía sau',
+  rooms:[['Vệ sinh',7,0.3,3,1.9,'wc'],['Bếp khô',7,2.2,3,3.2,'bk'],['Ăn',7,5.4,4.4,3.2,'an'],['Khách',10,0.3,5.5,5.1,'kh'],
+         ['Ngủ Ông bà',7,8.6,3.5,3.7,'ng'],['Sảnh',10.5,8.6,1.5,3.7,'sa'],['Ngủ Gia chủ',12,8.6,3.5,3.7,'ng']],
+  extra:()=>stair(11.4,5.4,2.2,3.2,'h')+R(13.6,5.4,1.9,3.2,C.kh,'#111','Góc đọc|/ kho','',11)+dv(10.5,10)+dv(12,10)+dv(10,0.8),
+  pros:['Khách + Ăn + Bếp khô liền nhau ở phía sau, kín đáo, mở cửa kính ra sân Phải','Mặt tiền nóng dành cho phòng ngủ: cửa sổ nhỏ + lam, ban ngày ít dùng','Cầu thang chữ L gọn, nằm giữa Nhà'],
+  cons:['Hai phòng ngủ hứng nắng chiều Tây/Tây Nam, tường nóng tới tối','Ông bà đi Vệ sinh phải băng qua Ăn và Khách, khoảng 10m','Khách vào nhà đi qua giữa cửa hai phòng ngủ; phòng khách không có cửa sổ ra Mặt tiền'],
+  path:'Ông bà → Vệ sinh: qua sảnh, khu Ăn, phòng Khách, khoảng 10m.'},
+ C:{name:'Ông bà sát Vệ sinh ở phía sau, Gia chủ phía trước',
+  rooms:[['Vệ sinh',7,0.3,2.6,1.9,'wc'],['Bếp khô',7,2.2,2.6,3.2,'bk'],['Sảnh sau',9.6,0.3,2.4,1.9,'hl'],['Ngủ Ông bà',12,0.3,3.5,3.9,'ng'],
+         ['Ăn',12,4.2,3.5,4.4,'an'],['Khách',7,5.4,5,6.9,'kh'],['Ngủ Gia chủ',12,8.6,3.5,3.7,'ng']],
+  extra:()=>stair(9.6,2.2,2.4,3.2,'v')+dv(9.6,0.8)+dv(12,0.8)+dh(12.8,8.6),
+  pros:['Ông bà gần Vệ sinh nhất (~3m qua sảnh sau), yên tĩnh, tránh nắng Tây','Gia chủ ở góc trước Phải, nhìn ra cổng và chỗ đỗ ô tô','Khu Ăn mở ra sân Phải, nối Bếp khô qua cầu thang ở lõi Nhà','Cầu thang chữ L ở đúng lõi Nhà'],
+  cons:['Phòng Gia chủ hứng nắng chiều Mặt tiền','Phòng khách hẹp hơn (rộng ~5m), Ăn tách khỏi Bếp khô bởi cầu thang','Ông bà có cửa sổ ra Khoảng lùi Phải, gần chỗ đỗ ô tô'],
+  path:'Ông bà → Vệ sinh: qua sảnh sau, khoảng 3m.'}
+};
+const keys=Object.keys(V);
+function render(){
+  let k=new URLSearchParams(location.search).get('variant')||'A'; if(!V[k])k='A';
+  const v=V[k];
+  document.getElementById('plan').innerHTML=base()+v.rooms.map(r=>room(...r)).join('')+v.extra()+fixed();
+  document.getElementById('label').textContent=`${k} (${v.name})`;
+  document.getElementById('info').innerHTML=`<p class="tag">PROTOTYPE · số đo gần đúng, chưa trừ tường · ô xanh lá đậm = cửa</p>
+   <h2>${k}. ${v.name}</h2>
+   <table>${v.rooms.map(r=>`<tr><td>${r[0]}</td><td>${r[3]} × ${r[4]}m</td><td>${(r[3]*r[4]).toFixed(1)} m²</td></tr>`).join('')}</table>
+   <h3>Ưu</h3><ul>${v.pros.map(x=>`<li>${x}</li>`).join('')}</ul>
+   <h3>Nhược</h3><ul>${v.cons.map(x=>`<li>${x}</li>`).join('')}</ul>
+   <h3>Đường đi đêm</h3><p>${v.path}</p>`;
+}
+function go(d){const cur=new URLSearchParams(location.search).get('variant')||'A';
+  const i=(keys.indexOf(cur)+d+keys.length)%keys.length;history.replaceState(null,'','?variant='+keys[i]);render();}
+document.getElementById('prev').onclick=()=>go(-1);document.getElementById('next').onclick=()=>go(1);
+addEventListener('keydown',e=>{if(e.target.closest('input,textarea,[contenteditable]'))return;
+  if(e.key==='ArrowLeft')go(-1);if(e.key==='ArrowRight')go(1);});
+render();
+</script></body></html>
