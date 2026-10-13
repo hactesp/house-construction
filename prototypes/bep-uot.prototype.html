@@ -1,0 +1,101 @@
+<!doctype html>
+<!-- PROTOTYPE (vứt đi): 3 phương án Bếp ướt ở góc sau sân Trái, chuyển bằng ?variant=A|B|C.
+     Ticket: Thiết kế khu bếp ướt ở sân bên trái (#3).
+     Đầu vào: bếp gas + bếp than/củi nhỏ; kiêm sơ chế, rửa, giặt phơi, kho; mái che kín, hở các phía; đặt phía sau.
+     KẾT LUẬN: chọn C (mái phủ hết bề ngang sân Trái ở đoạn sau, tường rào làm lưng bếp). -->
+<html lang="vi"><head><meta charset="utf-8"><title>PROTOTYPE – Bếp ướt</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;padding:16px 16px 80px;background:#f6f4ef;color:#222;display:flex;gap:24px;flex-wrap:wrap}
+svg{background:#fff;border:1px solid #ccc}
+.info{max-width:440px}.info h2{margin:.2em 0}.info li{margin:.25em 0}
+.tag{font-size:12px;color:#666}
+.legend span{display:inline-block;margin:2px 8px 2px 0;font-size:12px}
+.legend i{display:inline-block;width:12px;height:12px;vertical-align:middle;margin-right:4px;border:1px solid #555}
+#bar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#111;color:#fff;border-radius:999px;padding:8px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 4px 16px #0005;font-size:14px}
+#bar button{background:#333;color:#fff;border:0;border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:16px}
+</style></head><body>
+<svg id="plan" width="760" height="700"></svg>
+<div class="info" id="info"></div>
+<div id="bar"><button id="prev">←</button><span id="label"></span><button id="next">→</button></div>
+<script>
+// 34px = 1m. Khu đất 20m ngang × 18m sâu; đường ở dưới; phía trên là ranh sau.
+// Nhà: x 7,0–15,5; y 0,3–12,3. Khoảng lùi Trái x 0–7.
+const S=34,OX=40,OY=40,m=v=>v*S;
+const R=(x,y,w,h,fill,stroke='#555',txt='',dash='',fs=11)=>
+  `<rect x="${OX+m(x)}" y="${OY+m(y)}" width="${m(w)}" height="${m(h)}" fill="${fill}" stroke="${stroke}" ${dash?`stroke-dasharray="${dash}"`:''}/>`+
+  (txt?`<text x="${OX+m(x+w/2)}" y="${OY+m(y+h/2)}" font-size="${fs}" text-anchor="middle" dominant-baseline="middle">${txt}</text>`:'');
+const T=(x,y,t,s=11,c='#333',a='middle')=>`<text x="${OX+m(x)}" y="${OY+m(y)}" font-size="${s}" fill="${c}" text-anchor="${a}">${t}</text>`;
+const roof=(x,y,w,h,t)=>R(x,y,w,h,'#fde2e2','#b91c1c','','8 4')+T(x+w/2,y+h+0.45,t,11,'#b91c1c');
+const stove=(x,y,w,h)=>R(x,y,w,h,'#fb923c','#9a3412','Bếp gas + than',  '',10);
+const hood=(x,y,w,h)=>R(x,y,w,h,'none','#9a3412','','2 2');
+const sink=(x,y,w,h,t='Chậu rửa + sơ chế')=>R(x,y,w,h,'#93c5fd','#1d4ed8',t,'',10);
+const wash=(x,y,w,h)=>R(x,y,w,h,'#c4b5fd','#6d28d9','Giặt','',10);
+const store=(x,y,w,h,t='Kho + tủ gas')=>R(x,y,w,h,'#d6d3d1','#44403c',t,'',10);
+const dry=(x,y,w,h)=>R(x,y,w,h,'#fef9c3','#a16207','Sân phơi (nắng)','3 3',10);
+const door=(x,y,h=0.9)=>R(x-0.15,y,0.3,h,'#16a34a','#166534')+T(x+0.3,y+h/2+0.12,'Cửa hông → Bếp khô',10,'#166534','start');
+const drain=(x1,y1,x2,y2)=>`<line x1="${OX+m(x1)}" y1="${OY+m(y1)}" x2="${OX+m(x2)}" y2="${OY+m(y2)}" stroke="#0891b2" stroke-width="3" stroke-dasharray="6 3"/>`;
+const trap=(x,y)=>R(x,y,0.6,0.6,'#67e8f9','#0e7490')+T(x+0.3,y+1,'Hố tách mỡ',9,'#0e7490');
+function base(){
+  return R(0,0,20,18,'#eef5e9','#333')+
+    R(7,0.3,8.5,12,'#e5e7eb','#111','NHÀ 8,5 × 12','',13)+
+    T(7.3,1.2,'Bếp khô (dự kiến)',10,'#555','start')+
+    T(10,18.9,'ĐƯỜNG  (Mặt tiền hướng Tây/Tây Nam)',13,'#000')+
+    T(3.5,-0.4,'Khoảng lùi Trái 7,0m')+T(17.75,-0.4,'Phải 4,5m')+T(11.25,-0.4,'ranh sau 0,3m')+
+    R(15.9,12.8,2.5,5,'#e0e7ff','#6366f1','Ô tô','',10)+
+    T(-0.6,9,'ranh đất Trái (hàng xóm)',10,'#555','middle').replace('<text','<text transform="rotate(-90 '+(OX+m(-0.6))+' '+(OY+m(9))+')"');
+}
+const V={
+ A:{name:'Dải mái sát tường Nhà',roof:'4,0 × 7,0m ≈ 28m²',draw(){return base()+
+    roof(3,0.3,4,7,'mái lợp dựa tường Nhà')+
+    sink(3.6,0.3,3.4,0.6)+stove(3,1.2,0.6,3.6)+hood(3,1.2,1.2,3.6)+
+    wash(6.4,1.4,0.6,1.6)+store(3,5.6,1.6,1.7)+
+    door(7,5.2)+drain(3.8,6.9,6.8,6.9)+trap(6.3,7.5)+
+    dry(0.3,0.3,2.6,7)+dry(0.3,7.6,6.4,4.4);},
+  pros:['Đi từ Bếp khô ra chỉ 1 bước, mang đồ qua lại nhanh nhất','Mái dựa vào tường Nhà, kết cấu đơn giản nhất','Khoảng trống giữa ~2,8m thoáng, đi lại thoải mái','Phần sân sát ranh còn trống cho phơi đồ nắng'],
+  cons:['Khói và mùi dầu sát tường Nhà, dễ lọt vào cửa sổ tầng 1 và tầng 2 bên Trái','Tường Nhà đoạn sau gần như không mở được cửa sổ phòng ở','Mái thấp dần ra ngoài vì phải dựa dưới sàn/ban công tầng 2'],
+  link:'Cửa hông ở tường Trái của Nhà, mở thẳng vào khu bếp.'},
+ B:{name:'Nhà bếp riêng ở góc sau + hành lang có mái',roof:'bếp 5,0 × 5,0m = 25m², hành lang 1,7 × 1,5m',draw(){return base()+
+    roof(0.3,0.3,5,5,'mái nhà bếp riêng')+roof(5.3,2,1.7,1.5,'')+T(6.15,3.95,'hành lang',10,'#b91c1c')+
+    stove(0.3,1.0,0.6,3.0)+hood(0.3,1.0,1.2,3.0)+sink(1.0,0.3,3.2,0.6)+wash(4.7,0.3,0.6,1.6)+
+    store(0.3,4.1,2.0,1.2,'Kho khóa được + gas')+
+    door(7,2.3)+drain(2.6,5.1,5.1,5.1)+trap(4.6,5.6)+
+    dry(0.3,6,6.4,6);},
+  pros:['Khói đặt sát ranh, cách tường Nhà ~2m: ít ám mùi vào Nhà nhất','Tường Trái của Nhà vẫn mở được cửa sổ phòng ở','Kho có thể làm kín, khóa được, để gas an toàn','Sân phơi phía trước rộng và nắng nhất (~6,4 × 6m)'],
+  cons:['Phải làm thêm một mái và hành lang: nhiều kết cấu, nhiều chỗ nối mái phải chống dột','Đi từ Bếp khô sang xa hơn (~2–3m)','Bếp sát ranh: khói vẫn có thể bay sang hàng xóm nếu gió thổi về phía Trái'],
+  link:'Cửa hông ở tường Trái của Nhà, nối sang Bếp ướt bằng hành lang có mái.'},
+ C:{name:'Mái phủ hết bề ngang sân, tường rào làm lưng bếp',roof:'6,7 × 5,7m ≈ 38m²',draw(){return base()+
+    roof(0.3,0.3,6.7,5.7,'mái phủ từ tường rào tới tường Nhà')+
+    R(0,0.3,0.3,5.7,'#78716c','#44403c')+T(0.15,6.5,'tường rào xây cao',9,'#44403c')+
+    stove(0.3,1.0,0.6,4.0)+hood(0.3,1.0,1.2,4.0)+sink(2.6,2.0,1.6,1.4,'Bàn đảo rửa + sơ chế')+
+    wash(1.0,0.3,1.8,0.6)+store(2.9,0.3,3.2,0.6,'Tủ kho dọc ranh sau')+
+    door(7,3.2)+drain(1.2,5.8,6.8,5.8)+trap(6.3,6.4)+
+    dry(0.3,6.6,6.4,5.4);},
+  pros:['Diện tích có mái lớn nhất, mưa vẫn làm mọi việc được','Có bàn đảo ở giữa: nhiều người cùng sơ chế','Một mái duy nhất, không có chỗ nối như phương án B','Tường Nhà không dính bếp, khói ở phía tường rào'],
+  cons:['Khói và mùi hướng thẳng về phía hàng xóm bên Trái, cần ống hút khói cao','Mái lớn che bớt ánh sáng cho cửa sổ tầng 1 bên Trái đoạn sau','Tường rào phải xây cao, chắc (làm lưng bếp)','Sân phơi nhỏ hơn B'],
+  link:'Cửa hông ở tường Trái của Nhà, ra thẳng dưới mái.'}
+};
+const keys=Object.keys(V);
+function render(){
+  let k=new URLSearchParams(location.search).get('variant')||'A'; if(!V[k])k='A';
+  const v=V[k];
+  document.getElementById('plan').innerHTML=v.draw();
+  document.getElementById('label').textContent=`${k} (${v.name})`;
+  document.getElementById('info').innerHTML=`<p class="tag">PROTOTYPE · số đo gần đúng · mặt bàn sâu 0,6m · lối đi ≥ 1,0m</p>
+   <h2>${k}. ${v.name}</h2><p><b>Mái:</b> ${v.roof}</p>
+   <div class="legend"><span><i style="background:#fb923c"></i>Bếp (khung chấm: chụp hút khói)</span><span><i style="background:#93c5fd"></i>Rửa, sơ chế</span><span><i style="background:#c4b5fd"></i>Giặt</span><span><i style="background:#d6d3d1"></i>Kho</span><span><i style="background:#fef9c3"></i>Phơi</span><span><i style="background:#67e8f9"></i>Thoát nước</span></div>
+   <h3>Ưu</h3><ul>${v.pros.map(x=>`<li>${x}</li>`).join('')}</ul>
+   <h3>Nhược</h3><ul>${v.cons.map(x=>`<li>${x}</li>`).join('')}</ul>
+   <h3>Nối với Bếp khô</h3><p>${v.link}</p>
+   <h3>Chung cho cả 3</h3><ul>
+    <li>Nền bếp cao hơn sân 10–15cm, dốc 1–2% về rãnh thu nước có nắp lưới (nét xanh), qua hố tách mỡ rồi mới ra cống.</li>
+    <li>Nước mưa từ mái thu bằng máng xối, đi đường riêng, không chung với nước thải bếp.</li>
+    <li>Bình gas để nơi thoáng, không đặt trong tủ kín không có lỗ thông gió.</li>
+    <li>Sân Trái nằm khoảng phía Bắc/Tây Bắc của Nhà (giả định từ Mặt tiền Tây/Tây Nam), nên sân phơi đặt ra khỏi bóng Nhà.</li></ul>`;
+}
+function go(d){const cur=new URLSearchParams(location.search).get('variant')||'A';
+  const i=(keys.indexOf(cur)+d+keys.length)%keys.length;history.replaceState(null,'','?variant='+keys[i]);render();}
+document.getElementById('prev').onclick=()=>go(-1);document.getElementById('next').onclick=()=>go(1);
+addEventListener('keydown',e=>{if(e.target.closest('input,textarea,[contenteditable]'))return;
+  if(e.key==='ArrowLeft')go(-1);if(e.key==='ArrowRight')go(1);});
+render();
+</script></body></html>
