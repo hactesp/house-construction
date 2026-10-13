@@ -1,0 +1,156 @@
+<!doctype html>
+<!-- PROTOTYPE (vứt đi): 4 phương án che nắng Mặt tiền, chuyển bằng ?variant=A|B|C|D. Ticket: Giải pháp che nắng mặt tiền hướng Tây/Tây Nam (#5).
+     Mặt đứng nhìn từ đường, theo bản vẽ kỹ sư "PA Mr.Hà 12.11" (số đo gần đúng): tầng 1 Khách – Sảnh chính (lùi 1,2m) – Ngủ 02;
+     tầng 2 Hiên trà (đua ~1m) – Ngủ 04. Cao tầng 1 3,6m, tầng 2 3,4m; mái chưa chốt nên chỉ vẽ đường đỉnh tường.
+     Tính nắng trực tiếp lên kính bằng dò tia (vị trí mặt trời theo vĩ độ, ngày, giờ mặt trời). Không tính nắng tán xạ. -->
+<html lang="vi"><head><meta charset="utf-8"><title>PROTOTYPE – Che nắng Mặt tiền</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;padding:16px 16px 80px;background:#f6f4ef;color:#222;display:flex;gap:24px;flex-wrap:wrap}
+svg{background:#fff;border:1px solid #ccc}
+.info{max-width:480px}.info h2{margin:.2em 0}.info li{margin:.25em 0}
+.ctl{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;font-size:14px;margin:8px 0 12px}
+table{border-collapse:collapse;font-size:13px;margin:6px 0}td,th{padding:3px 8px;border-bottom:1px solid #ddd;text-align:right}td:first-child,th:first-child{text-align:left}
+.sun{font-size:13px;color:#555}
+#bar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#111;color:#fff;border-radius:999px;padding:8px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 4px 16px #0005;font-size:14px}
+#bar button{background:#333;color:#fff;border:0;border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:16px}
+</style></head><body>
+<div><svg id="elev" width="760" height="620"></svg></div>
+<div class="info">
+ <h2 id="title"></h2>
+ <div class="ctl">
+  <label>Vị trí</label><select id="lat"><option value="21.03">Hà Nội (21°B)</option><option value="16.05">Đà Nẵng (16°B)</option><option value="10.78">TP.HCM (10,8°B)</option></select>
+  <label>Hướng Mặt tiền</label><select id="ori"><option value="270">Tây</option><option value="247.5">Tây Tây Nam</option><option value="225" selected>Tây Nam</option></select>
+  <label>Ngày</label><select id="day"><option value="172">21/6 (hè, mặt trời lệch Bắc)</option><option value="105">15/4 (đầu hè)</option><option value="264">21/9 (thu phân)</option><option value="355">21/12 (đông, mặt trời lệch Nam)</option></select>
+  <label>Giờ: <b id="hv"></b></label><input id="hr" type="range" min="12" max="18.5" step="0.25" value="16">
+  <label>Kính</label><select id="glass"><option value="0.8">Kính trong (SHGC 0,8)</option><option value="0.4">Kính Low-E (SHGC 0,4)</option></select>
+  <label id="finl">Góc lam: <b id="fv"></b></label><input id="fin" type="range" min="-60" max="60" step="5" value="-30">
+ </div>
+ <div class="sun" id="sun"></div>
+ <table id="tbl"></table>
+ <div id="txt"></div>
+</div>
+<div id="bar"><button id="prev">←</button><span id="label"></span><button id="next">→</button></div>
+<script>
+// Toạ độ mặt đứng: x từ trái sang phải (nhìn từ đường), y chiều cao, z hướng ra đường. Đơn vị m.
+const W=8.5,H1=3.6,H2=7.0,rad=Math.PI/180;
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+  cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+// Vị trí mặt trời (giờ mặt trời). Trả về độ cao, phương vị (từ Bắc, theo chiều kim đồng hồ).
+function sunPos(lat,n,t){
+  const d=23.44*Math.sin(2*Math.PI*(284+n)/365)*rad,h=15*(t-12)*rad,p=lat*rad;
+  const alt=Math.asin(Math.sin(p)*Math.sin(d)+Math.cos(p)*Math.cos(d)*Math.cos(h));
+  const az=Math.atan2(Math.sin(h),Math.cos(h)*Math.sin(p)-Math.tan(d)*Math.cos(p))/rad+180;
+  return {alt:alt/rad,az};
+}
+// Hướng tới mặt trời trong toạ độ mặt đứng; g = góc lệch giữa mặt trời và pháp tuyến Mặt tiền.
+function sunDir(s,ori){
+  let g=((s.az-ori+540)%360)-180;const a=s.alt*rad,gr=g*rad;
+  return {d:[-Math.cos(a)*Math.sin(gr),Math.sin(a),Math.cos(a)*Math.cos(gr)],g,hits:s.alt>0&&Math.abs(g)<90};
+}
+// Vật cản = tấm phẳng hình chữ nhật {o,u,v,tr}; u ⟂ v; tr = tỷ lệ nắng lọt qua (0 = kín).
+function transmit(p,d,obs){
+  let T=1;
+  for(const q of obs){
+    const n=cross(q.u,q.v),den=dot(d,n);if(Math.abs(den)<1e-9)continue;
+    const t=dot(sub(q.o,p),n)/den;if(t<=1e-6)continue;
+    const r=sub([p[0]+t*d[0],p[1]+t*d[1],p[2]+t*d[2]],q.o);
+    const a=dot(r,q.u)/dot(q.u,q.u),b=dot(r,q.v)/dot(q.v,q.v);
+    if(a>=0&&a<=1&&b>=0&&b<=1){T*=q.tr;if(T<0.01)return 0;}
+  }
+  return T;
+}
+// Cường độ nắng trực tiếp lên mặt đứng (W/m²), mô hình khí quyển đơn giản.
+function irr(s,g){
+  if(s.alt<=1||Math.abs(g)>=90)return 0;
+  const dni=1353*Math.pow(0.7,Math.pow(1/Math.sin(s.alt*rad),0.678));
+  return dni*Math.cos(s.alt*rad)*Math.cos(g*rad);
+}
+// Tấm ngang (ô văng, sàn, mái), tấm đứng song song Mặt tiền, lam đứng xoay góc th (độ, dương = mép ngoài lệch Phải).
+const hz=(x0,x1,y,z0,z1,tr=0)=>({o:[x0,y,z0],u:[x1-x0,0,0],v:[0,0,z1-z0],tr,k:'h'});
+const vt=(x0,x1,y0,y1,z,tr=0)=>({o:[x0,y0,z],u:[x1-x0,0,0],v:[0,y1-y0,0],tr,k:'v'});
+const sd=(x,y0,y1,z0,z1)=>({o:[x,y0,z0],u:[0,y1-y0,0],v:[0,0,z1-z0],tr:0,k:'s'});
+const fins=(x0,x1,y0,y1,z,step,len,th)=>{const r=[];for(let x=x0;x<=x1+1e-6;x+=step)
+  r.push({o:[x,y0,z],u:[0,y1-y0,0],v:[len*Math.sin(th*rad),0,len*Math.cos(th*rad)],tr:0,k:'f'});return r;};
+// Cửa kính chung cho mọi phương án: [tên, x0, x1, y0, y1, z].
+const WIN=[['Khách',0.4,2.6,0.5,2.9,0],['Sảnh chính (cửa)',3.3,4.8,0,2.6,-1.2],['Ngủ 02',5.8,7.8,0.9,2.4,0],
+           ['Hiên trà (vách kính)',0.4,4.7,3.7,6.3,0],['Ngủ 04',5.8,7.8,4.4,6.0,0]];
+// Vật cản có sẵn ở mọi phương án: sàn Hiên trà, hai vách hông Sảnh chính lùi, ô thoáng trên cửa.
+const BASE=[hz(0,5.1,3.6,0,1),sd(3.2,0,3.6,-1.2,0),sd(4.9,0,3.6,-1.2,0),hz(3.2,4.9,3.6,-1.2,0)];
+const V={
+ A:{name:'Mái đua và ô văng ngang',
+  obs:()=>[hz(0,8.5,7.0,0,1.5),hz(0.2,2.8,3.05,0,0.6),hz(5.6,8.0,2.6,0,0.9),hz(5.6,8.0,6.2,0,0.9)],
+  pros:['Mặt tiền gọn, đường nét ngang đơn giản, hợp Scandinavian','Mái đua 1,5m che mưa cho Hiên trà và tường tầng 2','Ít bảo trì (bê tông/mái), không cản tầm nhìn ra đường','Che tốt khi nắng còn cao (12–15h)'],
+  cons:['Nắng thấp cuối chiều (sau ~16h) luồn dưới ô văng, chiếu thẳng vào kính','Muốn che nắng thấp phải đua rất sâu, tối phòng']},
+ B:{name:'Lam gỗ đứng xoay góc',fin:1,
+  obs:th=>[hz(0,5.1,7.0,0,1.2),...fins(0.3,2.7,0.3,3.0,0.1,0.3,0.35,th),...fins(5.7,7.9,0.6,2.7,0.1,0.3,0.35,th),
+           ...fins(5.7,7.9,4.1,6.3,0.1,0.3,0.35,th),...fins(0.1,5.0,3.7,6.9,1.0,0.3,0.3,th)],
+  pros:['Lam gỗ đứng là chi tiết đặc trưng Scandinavian','Chặn tốt nắng thấp xiên từ phía Nam khi lam nghiêng đúng góc','Loại xoay được: mở lam buổi sáng để lấy sáng và nhìn ra ngoài'],
+  cons:['Khi mặt trời nằm ngay trước Mặt tiền (lệch nhỏ), nắng lọt giữa các lam','Gỗ ngoài trời cần sơn dầu định kỳ; loại xoay có cơ cấu, đắt hơn','Nhìn ra đường bị chia sọc']},
+ C:{name:'Vỏ thứ hai: tấm đục lỗ phủ tầng 2',
+  obs:()=>[hz(0,8.5,7.0,0,1.2),vt(0,8.5,3.6,7.0,1.1,0.3),vt(5.3,8.3,0.3,3.4,0.8,0.3),hz(5.3,8.3,3.4,0,0.8)],
+  pros:['Chặn ~70% nắng ở mọi góc, kể cả nắng thấp cuối chiều','Hiên trà nằm sau lớp vỏ: kín đáo với đường, vẫn thông gió','Tường tầng 2 được che bóng, giảm nóng cả phần tường đặc'],
+  cons:['Mặt tiền nặng khối, ít "Scandinavian mộc" hơn (trừ khi vỏ là lam gỗ mảnh)','Tầm nhìn ra ngoài mờ; ban ngày trong nhà tối hơn','Cần khung thép bắt vào sàn/mái, bảo trì vệ sinh bụi']},
+ D:{name:'Cây xanh trước nhà và giàn cây leo',
+  obs:()=>[hz(0,5.1,7.0,0,1.2),vt(-0.5,4.8,2.2,7.5,3.5,0.25),vt(5.4,8.3,0,3.4,0.6,0.35),vt(5.4,8.3,3.8,7.0,0.6,0.35),hz(5.4,8.3,7.0,0,0.6)],
+  pros:['Mát nhất về cảm giác: tán cây làm mát cả sân trước','Mềm mại, hợp Scandinavian kiểu gần thiên nhiên','Rẻ nhất về vật liệu'],
+  cons:['Cây cần 3–5 năm mới đủ tán; tán thưa theo mùa','Cây chiếm Khoảng lùi trước bên Trái; bên Phải vướng cổng, xe máy nên chỉ làm giàn leo','Lá rụng, côn trùng, cần chăm sóc']},
+ E:{name:'Kết hợp: lam gỗ xoay (B) + cây xanh trước nhà (D)',fin:1,
+  obs:th=>[...V.B.obs(th),vt(-0.5,4.8,2.2,7.5,3.5,0.25)],
+  pros:['Lam xoay chỉnh theo mùa và giờ, cây che thêm nắng thấp phía Trái','Những năm đầu khi cây còn nhỏ, lam vẫn che được một mình','Gỗ và cây xanh hợp Scandinavian gần thiên nhiên'],
+  cons:['Hai thứ cần chăm: sơn dầu lam gỗ, chăm cây','Cây chiếm Khoảng lùi trước bên Trái']}
+};
+const keys=Object.keys(V),$=id=>document.getElementById(id);
+let cur=new URLSearchParams(location.search).get('variant');if(!V[cur])cur='A';
+const S=66,X0=70,G=575,P=(x,y,z)=>[X0+(x+z*0.35)*S,G-(y+z*0.22)*S];
+const poly=(pts,f,st,op)=>`<polygon points="${pts.map(p=>p.join(',')).join(' ')}" fill="${f}" stroke="${st}" fill-opacity="${op}"/>`;
+const quad=q=>{const o=q.o,a=[o[0]+q.u[0],o[1]+q.u[1],o[2]+q.u[2]],b=[a[0]+q.v[0],a[1]+q.v[1],a[2]+q.v[2]],c=[o[0]+q.v[0],o[1]+q.v[1],o[2]+q.v[2]];return [o,a,b,c].map(p=>P(...p));};
+// Tính cho mỗi cửa: % diện tích kính có nắng và nhiệt nhận được (kWh) từ 10h tới 18h30.
+function calc(obs,s,dir,step){
+  return WIN.map(([n,x0,x1,y0,y1,z])=>{let lit=0,c=0;
+    for(let x=x0+step/2;x<x1;x+=step)for(let y=y0+step/2;y<y1;y+=step){c++;if(dir.hits)lit+=transmit([x,y,z+0.01],dir.d,obs);}
+    return {n,f:lit/c,A:(x1-x0)*(y1-y0)};});
+}
+function daily(obs,lat,day,ori,shgc){
+  const tot=WIN.map(()=>0);
+  for(let t=10;t<=18.5;t+=0.25){const s=sunPos(lat,day,t),dir=sunDir(s,ori),E=irr(s,dir.g);if(!E)continue;
+    calc(obs,s,dir,0.2).forEach((r,i)=>tot[i]+=r.f*r.A*E*shgc*0.25/1000);}
+  return tot;
+}
+function render(){
+  const v=V[cur],lat=+$('lat').value,ori=+$('ori').value,day=+$('day').value,t=+$('hr').value,shgc=+$('glass').value,th=+$('fin').value;
+  const obs=[...BASE,...v.obs(th)],s=sunPos(lat,day,t),dir=sunDir(s,ori);
+  $('hv').textContent=`${Math.floor(t)}:${String(Math.round(t%1*60)).padStart(2,'0')}`;$('fv').textContent=th+'°';
+  $('fin').style.display=$('finl').style.display=v.fin?'':'none';
+  let g=poly([P(0,0,0),P(W,0,0),P(W,H2,0),P(0,H2,0)],'#f3f0ea','#111',1)+poly([P(3.2,0,-1.2),P(4.9,0,-1.2),P(4.9,H1,-1.2),P(3.2,H1,-1.2)],'#e5e0d6','#555',1);
+  const st=0.1;
+  for(const [n,x0,x1,y0,y1,z] of WIN){
+    for(let x=x0;x<x1-1e-6;x+=st)for(let y=y0;y<y1-1e-6;y+=st){
+      const T=dir.hits?transmit([x+st/2,y+st/2,z+0.01],dir.d,obs):0;
+      g+=poly([P(x,y,z),P(x+st,y,z),P(x+st,y+st,z),P(x,y+st,z)],T>0?`rgb(250,${Math.round(204-60*T)},${Math.round(80-60*T)})`:'#9db4c8','none',T>0?0.35+0.65*T:1);}
+    const [px,py]=P((x0+x1)/2,y1+0.15,z);g+=`<text x="${px}" y="${py}" font-size="11" text-anchor="middle">${n}</text>`;
+  }
+  const col={h:'#8a8a8a',s:'#8a8a8a',f:'#8b5e3c',v:'#a16207'};
+  [...obs].sort((a,b)=>a.o[2]-b.o[2]).forEach(q=>{const tree=q.tr===0.25;
+    g+=poly(quad(q),tree?'#16a34a':q.tr>0?(q.tr===0.35?'#65a30d':col.v):col[q.k],'#333',q.tr>0?0.3:0.85);});
+  g+=`<line x1="20" y1="${G}" x2="740" y2="${G}" stroke="#000"/><text x="380" y="${G+28}" font-size="13" text-anchor="middle">ĐƯỜNG (nhìn từ đường vào Mặt tiền)</text>`;
+  g+=`<text x="${X0}" y="${G+14}" font-size="11">Trái</text><text x="${X0+W*S}" y="${G+14}" font-size="11" text-anchor="end">Phải</text>`;
+  $('elev').innerHTML=g;
+  $('title').textContent=`${cur}. ${v.name}`;$('label').textContent=`${cur} (${v.name})`;document.title=`PROTOTYPE – ${cur}. ${v.name}`;
+  $('sun').innerHTML=`Mặt trời: cao ${s.alt.toFixed(0)}°, phương vị ${s.az.toFixed(0)}°, lệch ${dir.g.toFixed(0)}° so với hướng Mặt tiền. `+
+    (dir.hits?`Cường độ nắng lên mặt đứng ~${irr(s,dir.g).toFixed(0)} W/m².`:'<b>Nắng không chiếu vào Mặt tiền lúc này.</b>');
+  const now=calc(obs,s,dir,0.1),dv=daily(obs,lat,day,ori,shgc),d0=daily(BASE,lat,day,ori,shgc),sum=a=>a.reduce((x,y)=>x+y,0);
+  $('tbl').innerHTML='<tr><th>Cửa kính</th><th>Nắng lúc này</th><th>Nhiệt cả ngày</th><th>Không che</th></tr>'+
+    now.map((r,i)=>`<tr><td>${r.n}</td><td>${(r.f*100).toFixed(0)}%</td><td>${dv[i].toFixed(1)} kWh</td><td>${d0[i].toFixed(1)} kWh</td></tr>`).join('')+
+    `<tr><th>Tổng</th><th></th><th>${sum(dv).toFixed(1)} kWh</th><th>${sum(d0).toFixed(1)} kWh</th></tr>`+
+    `<tr><td colspan="4" style="text-align:left;color:#555">Giảm ${(100-100*sum(dv)/Math.max(sum(d0),1e-9)).toFixed(0)}% nhiệt nắng trực tiếp qua kính so với không che (10h–18h30, cùng loại kính).</td></tr>`;
+  $('txt').innerHTML=`<b>Được</b><ul>${v.pros.map(x=>`<li>${x}</li>`).join('')}</ul><b>Mất</b><ul>${v.cons.map(x=>`<li>${x}</li>`).join('')}</ul>`+
+    '<p class="sun">Ô vàng là kính có nắng chiếu trực tiếp (càng đậm càng nhiều nắng lọt). Ô xanh xám là kính trong bóng râm. Tấm nâu: lam gỗ. Tấm xám: sàn, mái, ô văng. Tấm cam nhạt: vỏ đục lỗ (30% hở). Tấm xanh: tán cây (25% lọt) và giàn leo (35% lọt).</p>';
+}
+function go(k){cur=k;const u=new URL(location);u.searchParams.set('variant',k);history.replaceState(null,'',u);render();}
+const step=d=>go(keys[(keys.indexOf(cur)+d+keys.length)%keys.length]);
+$('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);
+document.addEventListener('keydown',e=>{if(e.target.matches('input,select,textarea,[contenteditable]'))return;if(e.key==='ArrowLeft')step(-1);if(e.key==='ArrowRight')step(1);});
+['lat','ori','day','hr','glass','fin'].forEach(id=>$(id).addEventListener('input',render));
+render();
+</script>
+</body></html>
