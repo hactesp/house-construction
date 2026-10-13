@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+._*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Bí mật, cấu hình cục bộ
+.env
+.env.*
+
+# Bản nháp tạm của agent
+.scratch/
