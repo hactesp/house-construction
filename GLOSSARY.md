@@ -24,6 +24,9 @@ Phần đất mà Nhà chiếm trên mặt đất (8,5m × 12m), không tính Ba
 **Ban công**:
 Phần sàn tầng 2 đua ra ngoài Diện tích xây dựng.
 
+**Hiên trà**:
+Ban công có mái ở góc trước Trái tầng 2, dùng ngồi uống trà; đua ra ngoài Mặt tiền ~1m.
+
 **Diện tích sàn**:
 Tổng diện tích sàn của cả hai tầng.
 
@@ -49,6 +52,10 @@ Khu bếp trong nhà ở tầng 1, dùng chuẩn bị và nấu nhẹ, ít khói
 **Bếp ướt**:
 Khu nấu nướng chính, nhiều khói dầu, đặt ngoài trời ở sân bên Trái của Nhà.
 _Avoid_: Bếp ngoài, bếp phụ
+
+**Sảnh phụ**:
+Cửa phụ trên tường Trái tầng 1, nối Nhà với Bếp ướt ở sân Trái.
+_Avoid_: Cửa hông
 
 **Phòng khách**:
 Không gian mở ở tầng 1, gộp với phòng ăn, dùng để tiếp khách.

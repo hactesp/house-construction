@@ -4,10 +4,11 @@ Hồ sơ thiết kế một Nhà 2 tầng trên khu đất 20m × 18m, hướng 
 
 ## Thông số đã chốt
 
-- Diện tích xây dựng: 8,5m × 12m. Ban công tầng 2 được đua ra ngoài phần này.
+- Diện tích xây dựng: 8,5m × 12m. Hiên trà tầng 2 đua ra ngoài Mặt tiền ~1m.
+- Bản chuẩn mặt bằng: bản vẽ kỹ sư "PA Mr.Hà 12.11" (PDF giữ ngoài repo, mô tả ở issue #7 và #8).
 - Khoảng lùi: Phải 4,5m, Trái 7,0m, sau 30cm, trước 5,7m.
 - Tầng 1: phòng khách + phòng ăn, 2 phòng ngủ, 1 vệ sinh, Bếp khô. Bếp ướt ở sân Trái.
-- Tầng 2: 2 phòng ngủ, phòng thờ, 1 vệ sinh, phòng sinh hoạt chung.
+- Tầng 2: 2 phòng ngủ, phòng thờ, 1 vệ sinh, phòng sinh hoạt chung, phòng làm việc, Hiên trà.
 - Chỗ để xe: 1 ô tô 7 chỗ trong Khoảng lùi Phải, khoảng 3 xe máy ở Khoảng lùi trước.
 
 Danh sách đầy đủ và cập nhật nhất nằm ở map [#1](https://github.com/hactesp/house-construction/issues/1).
