@@ -30,6 +30,16 @@ Ban công có mái ở góc trước Trái tầng 2, dùng ngồi uống trà; �
 **Diện tích sàn**:
 Tổng diện tích sàn của cả hai tầng.
 
+## Mái
+
+**Áp mái**:
+Khoảng trống giữa sàn mái bê tông (trần tầng 2) và lớp mái dốc phía trên; không dùng để ở.
+_Avoid_: Gác xép, tầng tum
+
+**Đầu hồi**:
+Mảng tường hình tam giác ở hai đầu mái dốc hai mái, nằm dưới hai mép dốc.
+_Avoid_: Tường hồi, mặt tam giác
+
 ## Phong thủy
 
 **Gia chủ**:
