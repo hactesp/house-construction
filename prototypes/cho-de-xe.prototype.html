@@ -1,0 +1,80 @@
+<!doctype html>
+<!-- PROTOTYPE (vứt đi): 3 phương án chỗ để xe trên tổng mặt bằng, chuyển bằng ?variant=A|B|C. Ticket: Bố trí chỗ để xe trong khoảng lùi trước (#4).
+     KẾT LUẬN: chọn A (ô tô trong Khoảng lùi Phải), không mái che. Người dùng đổi Nhà thành 8,5 × 12m: Khoảng lùi sau 0,3m, trước 5,7m, Phải 4,5m, Trái 7,0m.
+     Bản vẽ dưới đây vẫn dùng kích thước cũ 8 × 13m lúc so sánh phương án. -->
+<html lang="vi"><head><meta charset="utf-8"><title>PROTOTYPE – Chỗ để xe</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;padding:16px 16px 80px;background:#f6f4ef;color:#222;display:flex;gap:24px;flex-wrap:wrap}
+svg{background:#fff;border:1px solid #ccc}
+.info{max-width:420px}.info h2{margin:.2em 0}.info li{margin:.25em 0}
+.tag{font-size:12px;color:#666}
+#bar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#111;color:#fff;border-radius:999px;padding:8px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 4px 16px #0005;font-size:14px}
+#bar button{background:#333;color:#fff;border:0;border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:16px}
+</style></head><body>
+<svg id="plan" width="680" height="640"></svg>
+<div class="info" id="info"></div>
+<div id="bar"><button id="prev">←</button><span id="label"></span><button id="next">→</button></div>
+<script>
+const S=30,OX=40,OY=40; // 30px = 1m; khu đất 20m (ngang) × 18m (sâu); đường ở phía dưới
+const m=v=>v*S;
+const rect=(x,y,w,h,fill,stroke='#555',txt='',dash='')=>
+  `<rect x="${OX+m(x)}" y="${OY+m(y)}" width="${m(w)}" height="${m(h)}" fill="${fill}" stroke="${stroke}" ${dash?`stroke-dasharray="${dash}"`:''}/>`+
+  (txt?`<text x="${OX+m(x+w/2)}" y="${OY+m(y+h/2)}" font-size="12" text-anchor="middle" dominant-baseline="middle">${txt}</text>`:'');
+const line=(x1,y1,x2,y2,c='#c00',w=4)=>`<line x1="${OX+m(x1)}" y1="${OY+m(y1)}" x2="${OX+m(x2)}" y2="${OY+m(y2)}" stroke="${c}" stroke-width="${w}"/>`;
+const label=(x,y,t,s=11,c='#333')=>`<text x="${OX+m(x)}" y="${OY+m(y)}" font-size="${s}" fill="${c}" text-anchor="middle">${t}</text>`;
+const car=(x,y,w,h)=>rect(x,y,w,h,'#9ec5fe','#1d4ed8','Ô tô 2,5×5,3');
+const bikes=(x,y,w,h)=>rect(x,y,w,h,'#fde68a','#b45309','Xe máy');
+const wet=(x,y,w,h)=>rect(x,y,w,h,'#fecaca','#b91c1c','Bếp ướt');
+const door=(x,y,w=1.2)=>rect(x,y-0.15,w,0.3,'#16a34a','#166534')+label(x+w/2,y-0.35,'Cửa chính',10,'#166534');
+
+function base(L){ // L = Khoảng lùi Trái
+  return rect(0,0,20,18,'#eef5e9','#333')+
+    rect(L,0.3,8,13,'#e5e7eb','#111','NHÀ 8 × 13')+
+    label(10,18+0.9,'ĐƯỜNG  (Mặt tiền hướng Tây/Tây Nam)',13,'#000')+
+    label(L/2,-0.4,`Trái ${L}m`)+label(L+8+(12-L)/2,-0.4,`Phải ${12-L}m`)+
+    label(L+4,15.9,'Khoảng lùi trước 4,7m',11,'#555')+
+    rect(0,13.3,20,4.7,'none','#888','','4 4');
+}
+const V={
+ A:{name:'Ô tô trong Khoảng lùi Phải',draw(){const L=7.5;return base(L)+
+    car(16.25,11.5,2.5,5.3)+rect(15.75,10.5,3.5,7,'none','#1d4ed8','','6 3')+label(17.5,10.2,'mái che xe',10,'#1d4ed8')+
+    line(15.6,18,20,18)+label(17.8,17.75,'cổng 4,4m',10,'#c00')+
+    bikes(13.2,13.8,2,1.5)+door(10.9,13.3)+wet(0.5,4,6.5,6)+
+    rect(1,14,5.5,3,'#bbf7d0','#15803d','Cây xanh che nắng');},
+  pros:['Khoảng lùi trước trống phần lớn → trồng cây che nắng Mặt tiền','Xe vào thẳng, không phải xoay trở','Bếp ướt giữ trọn sân Trái 7,5m'],
+  cons:['Dùng hết Khoảng lùi Phải 4,5m cho xe','Cổng và lối xe nằm lệch Phải, xa Phòng khách hơn nếu cửa ở giữa'],
+  door:'Cửa chính ở giữa Mặt tiền; đi bộ từ xe qua hiên trước khoảng 4–5m.'},
+ B:{name:'Ô tô đỗ ngang song song đường trong Khoảng lùi trước',draw(){const L=7.5;return base(L)+
+    car(1.2,14.6,5.3,2.5)+line(0.6,18,7.6,18)+label(4.1,17.75,'cổng trượt 7m',10,'#c00')+
+    bikes(16,14.2,2.5,1.5)+door(10.9,13.3)+wet(0.5,3,6.5,6)+
+    rect(9,14.2,6,2.8,'#bbf7d0','#15803d','Sân trước / hiên');},
+  pros:['Khoảng lùi Phải 4,5m để trống làm sân/lối đi','Đúng ý ban đầu: xe nằm trong Khoảng lùi trước'],
+  cons:['Phải xoay trở để vào chỗ đỗ song song, cần cổng rộng ~7m','Xe chắn trước sân Trái, che bớt lối từ đường vào Bếp ướt','Ít chỗ trồng cây che nắng trước Mặt tiền'],
+  door:'Cửa chính ở giữa Mặt tiền, đi thẳng từ đường qua sân trước.'},
+ C:{name:'Ô tô trong Khoảng lùi Trái, Bếp ướt lùi về sau',draw(){const L=7.5;return base(L)+
+    car(2.5,10,2.5,5.3)+rect(1.8,9.4,3.9,6.2,'none','#1d4ed8','','6 3')+label(3.75,9.1,'mái che xe',10,'#1d4ed8')+
+    line(1.5,18,6.5,18)+label(4,17.75,'cổng 5m',10,'#c00')+
+    bikes(5.9,11,1.4,3)+door(7.35,10.5,0.3)+label(6.6,10.2,'Cửa hông',10,'#166534')+
+    wet(0.5,0.6,6.8,6.5)+rect(9,14,10,3,'#bbf7d0','#15803d','Vườn trước + cây che nắng');},
+  pros:['Khoảng lùi trước và Phải để làm vườn, cây che nắng','Lối từ xe vào nhà qua cửa hông, gần Bếp khô và Bếp ướt (tiện mang đồ chợ)'],
+  cons:['Bếp ướt bị thu về nửa sau sân Trái (~6,8 × 6,5m)','Khói Bếp ướt có thể bay về phía xe nếu không có vách ngăn'],
+  door:'Cửa chính vẫn có thể ở Mặt tiền; thêm cửa hông phía Trái nối xe với bếp.'}
+};
+const keys=Object.keys(V);
+function render(){
+  let k=new URLSearchParams(location.search).get('variant')||'A'; if(!V[k])k='A';
+  const v=V[k];
+  document.getElementById('plan').innerHTML=v.draw();
+  document.getElementById('label').textContent=`${k} (${v.name})`;
+  document.getElementById('info').innerHTML=`<p class="tag">PROTOTYPE · giả định ô tô 7 chỗ ~4,8×1,9m, ô đỗ 2,5×5,3m; ~3 xe máy</p>
+   <h2>${k}. ${v.name}</h2><h3>Ưu</h3><ul>${v.pros.map(x=>`<li>${x}</li>`).join('')}</ul>
+   <h3>Nhược</h3><ul>${v.cons.map(x=>`<li>${x}</li>`).join('')}</ul><h3>Cửa chính</h3><p>${v.door}</p>
+   <p class="tag">Đỗ vuông góc (mũi xe vào nhà) trong Khoảng lùi trước bị loại: cần ~5,3m, chỉ có 4,7m.</p>`;
+}
+function go(d){const cur=new URLSearchParams(location.search).get('variant')||'A';
+  const i=(keys.indexOf(cur)+d+keys.length)%keys.length;history.replaceState(null,'','?variant='+keys[i]);render();}
+document.getElementById('prev').onclick=()=>go(-1);document.getElementById('next').onclick=()=>go(1);
+addEventListener('keydown',e=>{if(e.target.closest('input,textarea,[contenteditable]'))return;
+  if(e.key==='ArrowLeft')go(-1);if(e.key==='ArrowRight')go(1);});
+render();
+</script></body></html>
