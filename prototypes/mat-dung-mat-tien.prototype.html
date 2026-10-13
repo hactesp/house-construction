@@ -1,0 +1,185 @@
+<!doctype html>
+<!-- PROTOTYPE (vứt đi): 4 phương án mặt đứng Mặt tiền + phối cảnh, chuyển bằng ?variant=A|B|C|D, góc nhìn ?view=E|L|R.
+     Ticket: Thiết kế mặt đứng Mặt tiền và phối cảnh tổng thể (#12).
+     Cố định ở mọi phương án: mặt bằng theo bản vẽ kỹ sư "PA Mr.Hà 12.11" (số đo gần đúng), hệ mái (#11): hai mái 35°, Đầu hồi quay ra
+     Mặt tiền, đua hai bên 0,8m, Đầu hồi trước 0,6m; lam gỗ đứng xoay được trước kính Khách, Ngủ 02, Ngủ 04, mép Hiên trà (#5);
+     cây tán rộng ở Khoảng lùi trước bên Trái; cổng góc trước Phải. Các phương án chỉ khác nhau ở vật liệu, màu và cách bố trí lam. -->
+<html lang="vi"><head><meta charset="utf-8"><title>PROTOTYPE – Mặt đứng Mặt tiền</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;padding:16px 16px 80px;background:#f6f4ef;color:#222;display:flex;gap:24px;flex-wrap:wrap}
+svg{background:#fff;border:1px solid #ccc}
+.info{max-width:460px}.info h2{margin:.2em 0}.info li{margin:.25em 0}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:14px;margin:8px 0 12px}
+.ctl button{border:1px solid #999;background:#fff;border-radius:6px;padding:4px 10px;cursor:pointer}.ctl button.on{background:#222;color:#fff}
+.note{font-size:13px;color:#555}
+#bar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#111;color:#fff;border-radius:999px;padding:8px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 4px 16px #0005;font-size:14px}
+#bar button{background:#333;color:#fff;border:0;border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:16px}
+</style></head><body>
+<div><svg id="v" width="800" height="640"></svg><div class="note" id="cap"></div></div>
+<div class="info">
+ <h2 id="title"></h2>
+ <div class="ctl">Góc nhìn:
+  <button data-view="E">Mặt đứng (nhìn thẳng)</button><button data-view="L">Phối cảnh trước Trái</button><button data-view="R">Phối cảnh trước Phải</button>
+  <label><input type="checkbox" id="tree" checked> Cây, rào, cổng</label>
+ </div>
+ <div id="txt"></div>
+ <p class="note"><b>Cố định ở mọi phương án:</b> mái hai mái 35° lợp tôn sóng đứng xám than, Đầu hồi quay ra Mặt tiền; lam gỗ đứng xoay được
+ trước kính Khách, Ngủ 02, Ngủ 04 và mép Hiên trà; mái Hiên trà riêng, thấp hơn mái chính; Sảnh chính lùi vào ~1,2m; cây tán rộng
+ ở Khoảng lùi trước bên Trái; cổng ở góc trước Phải; ô tô đỗ ở Khoảng lùi Phải; Bếp ướt ở góc sau sân Trái.</p>
+</div>
+<div id="bar"><button id="prev">←</button><span id="label"></span><button id="next">→</button></div>
+<script>
+// Toạ độ: x từ Trái sang Phải (nhìn từ đường), y chiều cao, z = 0 ở Mặt tiền, dương ra đường, âm vào trong (tường sau z = −12). Đơn vị m.
+const W=8.5,D=12,H1=3.6,HW=7.2,rad=Math.PI/180,T=Math.tan(35*rad),RID=HW+W/2*T,EV=0.8,EY=HW-EV*T,FG=0.6;
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+  cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const C={white:'#f4f2ee',wood:'#b8875a',woodL:'#d9b48a',woodD:'#8b5e3c',dark:'#33373b',roof:'#3b4045',glass:'#9db4c8',
+  stone:'#a8a49c',frame:'#222',grass:'#d5e6c6',pave:'#d6d3cc'};
+const R=(x0,x1,y0,y1,z)=>[[x0,y0,z],[x1,y0,z],[x1,y1,z],[x0,y1,z]];
+const RX=(x,z0,z1,y0,y1)=>[[x,y0,z0],[x,y0,z1],[x,y1,z1],[x,y1,z0]];
+const gableY=x=>HW+(W/2-Math.abs(x-W/2))*T;
+const UP=[[0,H1,0],[W,H1,0],[W,HW,0],[W/2,RID,0],[0,HW,0]];
+let ops,cam;
+const vis=n=>n[0]*cam[0]+n[1]*cam[1]+n[2]*cam[2]>1e-6;
+const poly=(p,f,o=1,s='#333',sw=0.6)=>ops.push({p,f,o,s,sw});
+const polyN=(p,n,f,o,s,sw)=>{if(vis(n))poly(p,f,o,s,sw);};
+const line=(a,b,s,sw=1)=>ops.push({l:[a,b],s,sw});
+// Lam đứng: mỗi thanh một nét; top(x) cắt theo mép Đầu hồi nếu có.
+function fins(x0,x1,y0,y1,z,step,col,top,sw=2.2,back=0.15){
+  if(back)poly(R(x0,x1,y0,y1,z-0.01),col,back,'none');
+  for(let x=x0;x<=x1+1e-6;x+=step){const yt=top?Math.min(y1,top(x)):y1;if(yt>y0)line([x,y0,z],[x,yt,z],col,sw);}
+}
+const win=(x0,x1,y0,y1,z,fr)=>{poly(R(x0,x1,y0,y1,z),C.glass,1,fr,1.6);line([(x0+x1)/2,y0,z],[(x0+x1)/2,y1,z],fr,1);};
+const winX=(x,z0,z1,y0,y1,fr,n)=>{if(!vis(n))return;poly(RX(x,z0,z1,y0,y1),C.glass,1,fr,1.6);line([x,y0,(z0+z1)/2],[x,y1,(z0+z1)/2],fr,1);};
+function box(x0,x1,y0,y1,z0,z1,f,o=1){
+  polyN(RX(x0,z0,z1,y0,y1),[-1,0,0],f,o);polyN(RX(x1,z0,z1,y0,y1),[1,0,0],f,o);
+  polyN(R(x0,x1,y0,y1,z0),[0,0,-1],f,o);polyN(R(x0,x1,y0,y1,z1),[0,0,1],f,o);
+  polyN([[x0,y1,z0],[x1,y1,z0],[x1,y1,z1],[x0,y1,z1]],[0,1,0],f,o);
+}
+// Lam trước kính tầng 1/tầng 2 dùng chung cho A, B, D: [x0,x1,y0,y1].
+const LAM_WIN=[[0.3,2.7,0.3,3.0],[5.7,7.9,0.6,2.7],[5.7,7.9,4.1,6.3]];
+const V={
+ A:{name:'Đầu hồi trắng, lam theo từng cửa',
+  mat:{low:C.white,up:C.white,base:1},frame:C.frame,door:C.wood,recess:'#d9d4ca',lam:LAM_WIN,lamCol:C.wood,vent:1,
+  desc:'Toàn bộ tường trát sơn trắng, chân tường ốp đá xám. Lam gỗ chỉ đặt thành từng tấm trước mỗi ô kính. Đầu hồi để trắng trơn, có một ô lam nhỏ gần đỉnh để thông gió Áp mái.',
+  pros:['Sáng, sạch, đúng chất Scandinavian cổ điển (nhà trắng, mái tối, chi tiết gỗ)','Lam gỗ nổi rõ trên nền trắng, nhìn là biết chỗ nào có cửa','Ít gỗ ngoài trời nhất, dễ sơn lại'],
+  cons:['Tường trắng hướng Tây/Tây Nam dễ ố bụi, rêu khi mưa tạt; cần sơn lại sau vài năm','Đầu hồi trắng lớn, nếu không có chi tiết thì trông trống','Thông gió Áp mái chỉ qua ô lam nhỏ']},
+ B:{name:'Tầng 1 trắng, tầng 2 và Đầu hồi ốp ván gỗ',
+  mat:{low:C.white,up:C.wood,upLines:[0.15,'#9a6f47',0.8],base:1},frame:C.frame,door:C.woodD,recess:'#d9d4ca',lam:LAM_WIN,lamCol:C.woodD,vent:0,
+  desc:'Tầng 1 trát trắng. Tầng 2 và Đầu hồi ốp ván gỗ đứng. Lam gỗ cùng tông với ván nên lẫn vào mảng ốp. Khe giữa các ván ở Đầu hồi để hở làm lỗ thông gió Áp mái.',
+  pros:['Ấm, chất gỗ rõ, khối trên nhẹ hơn khối dưới','Lam lẫn vào mảng ván: mặt tiền tầng 2 liền một mảng gỗ, không bị tấm lam "dán" lên','Thông gió Áp mái giấu trong khe ván, không thấy lỗ'],
+  cons:['Diện tích gỗ ngoài trời lớn: phải bảo dưỡng dầu 1–2 năm/lần, chống mối','Gỗ bạc màu không đều giữa phần chịu nắng và phần dưới mái đua','Ván gỗ trên tường hướng Tây cần khe thông gió phía sau để không cong vênh']},
+ C:{name:'Tường tối, màn lam gỗ sáng chạy suốt',
+  mat:{low:C.dark,up:C.dark,base:0},frame:'#111',door:C.woodL,recess:'#1f2225',lamCol:C.woodL,vent:0,gableLam:1,
+  lam:[[0.3,2.7,0.3,3.4],[5.6,8.2,0.3,6.9]],
+  desc:'Tường sơn xám than gần màu mái. Lam gỗ màu sáng chạy liền hai tầng ở dải Phải (Ngủ 02 + Ngủ 04) và phủ kín Đầu hồi. Cả mặt tiền đọc như một tấm màn gỗ trên nền tối.',
+  pros:['Lam là chủ đề duy nhất, mặt tiền rõ ràng, hiện đại kiểu Bắc Âu mới','Đầu hồi bằng lam: thông gió Áp mái nhiều nhất','Tường tối giấu bụi bẩn, ít phải sơn lại'],
+  cons:['Tường tối hấp nhiệt hơn (phần lớn đã nằm sau lam và cây)','Nhiều lam nhất: tốn và bảo dưỡng nhiều nhất','Ít "nhà trắng sáng" Scandinavian; trong nhà có thể tối hơn A/B']},
+ D:{name:'Tầng 1 trắng, tầng 2 và Đầu hồi bọc tôn như mái',
+  mat:{low:C.white,up:C.roof,upLines:[0.45,'#59606a',1],base:1},frame:C.woodD,door:C.wood,recess:'#d9d4ca',lam:LAM_WIN,lamCol:C.wood,vent:1,
+  desc:'Tầng 1 trát trắng. Tầng 2 và Đầu hồi bọc cùng loại tôn sóng đứng xám than với mái, nên phần trên thành một khối "hình ngôi nhà" liền mạch. Khung cửa và lam bằng gỗ để làm ấm.',
+  pros:['Mái và tường trên cùng vật liệu: khối nhà đơn giản, hiện đại','Tôn bền, gần như không cần bảo dưỡng','Gỗ (lam, khung cửa) nổi bật trên nền tối'],
+  cons:['Tôn trên tường hướng Tây hấp nóng: cần lớp cách nhiệt và khe thoáng phía sau','Có thể trông cứng, công nghiệp hơn','Mưa tạt gõ vào tường tôn tầng 2']}
+};
+function house(v){
+  const m=v.mat,linesZ=(x,n)=>{if(m.upLines&&vis(n))for(let z=-m.upLines[0];z>-D;z-=m.upLines[0])line([x,H1,z],[x,HW,z],m.upLines[1],m.upLines[2]);};
+  // Tường hông Phải (x = 8,5) và Trái (x = 0).
+  for(const [x,n] of [[W,[1,0,0]],[0,[-1,0,0]]]){
+    polyN(RX(x,0,-D,0,H1),n,m.low);polyN(RX(x,0,-D,H1,HW),n,m.up);linesZ(x,n);
+    if(m.base)polyN(RX(x,0,-D,0,0.45),n,C.stone);
+  }
+  for(const [z0,z1] of [[-1,-2.6],[-8.8,-10.4]]){winX(W,z0,z1,0.9,2.4,v.frame,[1,0,0]);winX(W,z0,z1,4.4,6,v.frame,[1,0,0]);}
+  winX(0,-3.6,-5.2,0.9,2.4,v.frame,[-1,0,0]);winX(0,-3.5,-5.5,4.4,6,v.frame,[-1,0,0]);winX(0,-8,-9.2,4.4,6,v.frame,[-1,0,0]);
+  if(vis([-1,0,0]))poly(RX(0,-6.2,-7.4,0,2.4),v.door,1,v.frame,1.6);
+  // Mặt tiền.
+  poly(R(0,W,0,H1,0),m.low);poly(UP,m.up);
+  if(m.upLines)fins(m.upLines[0],W-0.05,H1,RID,0.002,m.upLines[0],m.upLines[1],gableY,m.upLines[2],0);
+  if(m.base)poly(R(0,W,0,0.45,0.001),C.stone);
+  win(0.4,2.6,0.5,2.9,0.003,v.frame);
+  poly(R(3.2,4.9,0,3.0,0.003),v.recess,1,'#555');poly(R(3.35,4.75,0,2.6,0.004),v.door,1,v.frame,1.6);
+  win(5.8,7.8,0.9,2.4,0.003,v.frame);win(0.4,4.7,3.7,6.3,0.003,v.frame);win(5.8,7.8,4.4,6.0,0.003,v.frame);
+  if(v.vent)fins(3.65,4.85,8.1,9.1,0.05,0.12,v.mat.up===C.white?C.wood:'#222',null,1.5,0.5);
+  if(v.gableLam)fins(0.3,8.2,HW+0.1,RID,0.1,0.3,v.lamCol,x=>gableY(x)-0.15,2.2,0);
+  for(const [x0,x1,y0,y1] of v.lam)fins(x0,x1,y0,y1,0.1,0.3,v.lamCol);
+  // Mái chính, máng xối, ống đứng.
+  polyN([[-EV,EY,FG],[W/2,RID,FG],[W/2,RID,-D],[-EV,EY,-D]],[-Math.sin(35*rad),Math.cos(35*rad),0],C.roof,1,'#222');
+  polyN([[W+EV,EY,FG],[W/2,RID,FG],[W/2,RID,-D],[W+EV,EY,-D]],[Math.sin(35*rad),Math.cos(35*rad),0],C.roof,1,'#222');
+  poly([[-EV,EY,FG],[W/2,RID,FG],[W+EV,EY,FG],[W+EV,EY-0.2,FG],[W/2,RID-0.2,FG],[-EV,EY-0.2,FG]],'#2a2e32',1,'#111');
+  for(const x of [-EV,W+EV])line([x,EY-0.1,FG],[x,EY-0.1,-D],'#555',2.5);
+  for(const [x,n] of [[W+0.08,[1,0,0]],[-0.08,[-1,0,0]]])if(vis(n)||!cam[0])for(const z of [-0.4,-11.6])line([x,EY-0.1,z],[x,0,z],'#555',2);
+  // Hiên trà: sàn đua 1m, lan can kính, lam mép ngoài, mái riêng.
+  polyN([[0,3.6,0],[5.1,3.6,0],[5.1,3.6,1],[0,3.6,1]],[0,1,0],'#8d8a84');polyN(RX(0,0,1,3.4,3.6),[-1,0,0],'#8d8a84');
+  polyN(RX(5.1,0,1,3.4,3.6),[1,0,0],'#8d8a84');poly(R(0,5.1,3.4,3.6,1),'#8d8a84');
+  poly(R(0,5.1,3.6,4.7,1),C.glass,0.3,'#555');
+  fins(0.05,5.05,3.6,6.75,1,0.3,v.lamCol);
+  polyN([[-0.1,6.95,0],[5.2,6.95,0],[5.2,6.75,1.2],[-0.1,6.75,1.2]],[0,1,0.17],C.roof,1,'#222');
+  poly(R(-0.1,5.2,6.62,6.75,1.2),'#2a2e32',1,'#111');
+}
+// Khu đất 20 × 18m: x từ −7 (Khoảng lùi Trái 7m) đến 13 (Khoảng lùi Phải 4,5m), z từ 5,7 (Khoảng lùi trước) đến −12,3.
+function site(){
+  ops.push({p:[[-7,0,5.7],[13,0,5.7],[13,0,-12.3],[-7,0,-12.3]],f:C.grass,o:1,s:'none',sw:0,bg:1});
+  ops.push({p:[[0,0.01,0],[W,0.01,0],[W,0.01,5.7],[0,0.01,5.7]],f:C.pave,o:1,s:'none',sw:0,bg:1});
+  ops.push({p:[[W,0.01,5.7],[13,0.01,5.7],[13,0.01,-6],[W,0.01,-6]],f:C.pave,o:1,s:'none',sw:0,bg:1});
+  for(const [x,n] of [[-7,[-1,0,0]],[-7,[1,0,0]],[13,[1,0,0]],[13,[-1,0,0]]])polyN(RX(x,5.7,-12.3,0,1.8),n,'#e9e6df',1,'#999');
+  // Rào trước thấp, cổng góc trước Phải.
+  poly(R(-7,9.3,0,0.5,5.7),C.stone,1,'#888');
+  for(let x=-6.9;x<9.3;x+=0.25)line([x,0.5,5.7],[x,1.4,5.7],'#6b6f73',1.2);
+  poly(R(9.4,12.9,0,1.6,5.71),C.dark,0.9,'#111');for(let x=9.5;x<12.9;x+=0.15)line([x,0.05,5.72],[x,1.55,5.72],'#555',1);
+  // Ô tô ở Khoảng lùi Phải, mái Bếp ướt ở góc sau sân Trái.
+  box(9.4,11.3,0,1.7,-5.6,-0.8,'#7d8590');
+  box(-6.7,0,2.6,2.8,-12.3,-6.6,'#4a4f55');for(const z of [-6.8,-12.1])line([-6.5,0,z],[-6.5,2.6,z],'#555',2);
+  // Cây tán rộng ở Khoảng lùi trước bên Trái: tán vẽ quay về phía người nhìn.
+  line([-3,0,2.5],[-3,3,2.5],'#6b4a2f',6);
+  const u=[-cam[2],0,cam[0]],L=Math.hypot(u[0],u[2])||1,c=[-3,4.6,2.5],pts=[];
+  for(let i=0;i<12;i++){const a=i*Math.PI/6,r=2.6*(0.9+0.1*Math.cos(3*a));pts.push([c[0]+u[0]/L*r*Math.cos(a),c[1]+r*0.8*Math.sin(a),c[2]+u[2]/L*r*Math.cos(a)]);}
+  poly(pts,'#6f9a5b',0.88,'#4d7040',1);
+}
+// Góc nhìn: E là mặt đứng (chiếu thẳng), L/R là phối cảnh từ ngoài đường, mắt cao ~5,5m.
+const VIEWS={E:{name:'Mặt đứng'},L:{name:'Phối cảnh trước Trái',eye:[-9,5.5,20]},R:{name:'Phối cảnh trước Phải',eye:[17.5,5.5,20]}};
+const TG=[W/2,4,-5];
+function render(k,view,withSite){
+  const v=V[k],vw=VIEWS[view];ops=[];
+  let proj;
+  if(!vw.eye){cam=[0,0,1];proj=p=>[p[0],-p[1],-p[2]];}
+  else{
+    const E=vw.eye,nrm=a=>{const l=Math.hypot(...a);return a.map(x=>x/l);};
+    cam=nrm(sub(E,TG));const f=nrm(sub(TG,E)),r=nrm(cross(f,[0,1,0])),up=cross(r,f);
+    proj=p=>{const q=sub(p,E),z=dot(q,f);return [dot(q,r)/z,-dot(q,up)/z,z];};
+  }
+  if(withSite)site();
+  house(v);
+  const items=ops.map((o,i)=>{const pts=(o.p||o.l).map(proj);return {o,i,pts,d:pts.reduce((s,q)=>s+q[2],0)/pts.length};});
+  items.sort((a,b)=>(b.o.bg||0)-(a.o.bg||0)||(b.d-a.d)||(a.i-b.i));
+  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+  for(const it of items)if(!it.o.bg)for(const q of it.pts){x0=Math.min(x0,q[0]);x1=Math.max(x1,q[0]);y0=Math.min(y0,q[1]);y1=Math.max(y1,q[1]);}
+  const Wd=800,Hd=640,m=30,s=Math.min((Wd-2*m)/(x1-x0),(Hd-2*m)/(y1-y0)),ox=(Wd-s*(x1-x0))/2-s*x0,oy=(Hd-s*(y1-y0))/2-s*y0;
+  const P=q=>(ox+s*q[0]).toFixed(1)+','+(oy+s*q[1]).toFixed(1);
+  let out='';
+  for(const {o,pts} of items){
+    if(o.l)out+=`<line x1="${(ox+s*pts[0][0]).toFixed(1)}" y1="${(oy+s*pts[0][1]).toFixed(1)}" x2="${(ox+s*pts[1][0]).toFixed(1)}" y2="${(oy+s*pts[1][1]).toFixed(1)}" stroke="${o.s}" stroke-width="${o.sw}" stroke-linecap="round"/>`;
+    else out+=`<polygon points="${pts.map(P).join(' ')}" fill="${o.f}" fill-opacity="${o.o}" stroke="${o.s}" stroke-width="${o.sw}" stroke-linejoin="round"/>`;
+  }
+  if(!vw.eye){const g=oy;out+=`<line x1="0" y1="${g}" x2="${Wd}" y2="${g}" stroke="#555" stroke-width="1.5"/>`;}
+  document.getElementById('v').innerHTML=out;
+}
+// Điều khiển: ?variant=A|B|C|D, ?view=E|L|R; phím ← → đổi phương án.
+const KEYS=Object.keys(V),q=new URLSearchParams(location.search);
+let cur=KEYS.includes(q.get('variant'))?q.get('variant'):'A',view=VIEWS[q.get('view')]?q.get('view'):'E';
+const li=a=>a.map(x=>`<li>${x}</li>`).join('');
+function update(){
+  const v=V[cur],p=new URLSearchParams(location.search);p.set('variant',cur);p.set('view',view);history.replaceState(null,'','?'+p);
+  render(cur,view,document.getElementById('tree').checked);
+  document.getElementById('title').textContent=`${cur}. ${v.name}`;
+  document.getElementById('label').textContent=`${cur} (${v.name})`;
+  document.getElementById('txt').innerHTML=`<p>${v.desc}</p><b>Ưu điểm</b><ul>${li(v.pros)}</ul><b>Nhược điểm</b><ul>${li(v.cons)}</ul>`;
+  document.getElementById('cap').textContent=view==='E'?'Mặt đứng nhìn thẳng từ đường (số đo gần đúng theo bản vẽ kỹ sư).':VIEWS[view].name+' nhìn từ ngoài đường, mắt cao ~5,5m.';
+  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===view));
+}
+const step=d=>{cur=KEYS[(KEYS.indexOf(cur)+d+KEYS.length)%KEYS.length];update();};
+document.getElementById('prev').onclick=()=>step(-1);document.getElementById('next').onclick=()=>step(1);
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;update();});
+document.getElementById('tree').onchange=update;
+addEventListener('keydown',e=>{if(e.target.closest('input,textarea,select,[contenteditable]'))return;if(e.key==='ArrowLeft')step(-1);if(e.key==='ArrowRight')step(1);});
+update();
+</script>
+</body></html>
