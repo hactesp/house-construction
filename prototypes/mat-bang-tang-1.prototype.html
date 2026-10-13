@@ -3,7 +3,8 @@
      Cố định: Vệ sinh góc sau-Trái, Bếp khô ngay trước Vệ sinh, cửa hông ra Bếp ướt (~3m từ tường sau), cửa chính giữa Mặt tiền,
      trần bình thường (không thông tầng). Phòng ngủ: 1 Ông bà, 1 Gia chủ. Số đo gần đúng, chưa trừ bề dày tường.
      KẾT LUẬN: chọn A (cánh phòng ngủ dọc tường Phải, cầu thang thẳng ở dải giữa, phòng khách hết bề ngang Mặt tiền).
-     SỬA KẾT LUẬN: chọn D (như A, nhưng thang chữ U đặt giữa hai phòng ngủ bên Phải). -->
+     SỬA KẾT LUẬN: chọn D (như A, nhưng thang chữ U đặt giữa hai phòng ngủ bên Phải).
+     SỬA KẾT LUẬN LẦN 2: chọn E (phòng ngủ kín dọc bên Phải, bỏ hành lang, Khách – Ăn – Bếp khô thông nhau, Vệ sinh xoay dọc). -->
 <html lang="vi"><head><meta charset="utf-8"><title>PROTOTYPE – Mặt bằng tầng 1</title>
 <style>
 body{font-family:system-ui,sans-serif;margin:0;padding:16px 16px 80px;background:#f6f4ef;color:#222;display:flex;gap:24px;flex-wrap:wrap}
@@ -24,8 +25,8 @@ const R=(x,y,w,h,fill,stroke='#555',txt='',dash='',fs=12)=>
   `<rect x="${OX+m(x)}" y="${OY+m(y)}" width="${m(w)}" height="${m(h)}" fill="${fill}" stroke="${stroke}" ${dash?`stroke-dasharray="${dash}"`:''}/>`+
   (txt?txt.split('|').map((t,i,a)=>`<text x="${OX+m(x+w/2)}" y="${OY+m(y+h/2)+(i-(a.length-1)/2)*14}" font-size="${fs}" text-anchor="middle" dominant-baseline="middle">${t}</text>`).join(''):'');
 const T=(x,y,t,s=11,c='#333',a='middle')=>`<text x="${OX+m(x)}" y="${OY+m(y)}" font-size="${s}" fill="${c}" text-anchor="${a}">${t}</text>`;
-// phòng: [tên, x, y, w, h, màu]; diện tích tự tính
-const room=(n,x,y,w,h,c)=>R(x,y,w,h,C[c],'#111',`${n}|${(w*h).toFixed(1)} m²`);
+// phòng: [tên, x, y, w, h, màu, mở?]; diện tích tự tính; mở = không tường ngăn (viền nét đứt)
+const room=(n,x,y,w,h,c,o)=>R(x,y,w,h,C[c],o?'#aaa':'#111',`${n}|${(w*h).toFixed(1)} m²`,o?'5 4':'');
 const dv=(x,y,h=0.9)=>R(x-0.08,y,0.16,h,'#16a34a','#166534'); // cửa trên tường đứng
 const dh=(x,y,w=0.9)=>R(x,y-0.08,w,0.16,'#16a34a','#166534'); // cửa trên tường ngang
 const stair=(x,y,w,h,dir)=>{let s=R(x,y,w,h,C.th,'#111');const n=dir==='v'?Math.floor(h/0.28):Math.floor(w/0.28);
@@ -35,7 +36,7 @@ const stairU=(x,y,w,h)=>{const run=w-1,n=Math.floor(run/0.27);let s=R(x,y,w,h,C.
   for(let i=1;i<n;i++)s+=R(x+i*run/n,y,0,h,'none','#888');
   return s+R(x,y+h/2,run,0,'none','#111')+R(x+run,y,0,h,'none','#888')+T(x+run+0.5,y+h/2+4,'chiếu nghỉ',8)+
     T(x+run/2,y+h*0.75+4,'lên →',10,'#111')+T(x+run/2,y+h*0.25+4,'← tới tầng 2',10,'#111');};
-function base(){
+function base(dc=11.25){
   return R(0,0,20,18,'#eef5e9','#333')+
     R(0.3,0.3,6.7,5.7,'#fde2e2','#b91c1c','Bếp ướt|(mái)','8 4',11)+
     R(15.9,6.5,2.5,5,'#e0e7ff','#6366f1','Ô tô','',11)+
@@ -43,9 +44,9 @@ function base(){
     R(7,0.3,8.5,12,'#fff','#111')+
     T(10,18.9,'ĐƯỜNG  (Mặt tiền hướng Tây/Tây Nam, nắng chiều)',13,'#000')+
     T(3.5,-0.4,'Khoảng lùi Trái 7,0m')+T(17.75,-0.4,'Phải 4,5m')+T(11.25,-0.4,'ranh sau 0,3m')+
-    T(11.25,13.6,'↑ cửa chính',11,'#166534');
+    T(dc,13.6,'↑ cửa chính',11,'#166534');
 }
-const fixed=()=>dv(7,3.0)+T(6.9,3.45,'cửa hông',10,'#166534','end')+dh(10.65,12.3,1.2);
+const fixed=(dc=11.25)=>dv(7,3.0)+T(6.9,3.45,'cửa hông',10,'#166534','end')+dh(dc-0.6,12.3,1.2);
 const V={
  A:{name:'Cánh phòng ngủ dọc tường Phải',
   rooms:[['Vệ sinh',7,0.3,4,1.7,'wc'],['Bếp khô',7,2,3,3.2,'bk'],['Ăn',7,5.2,3,2.9,'an'],['Hành lang',11,0.3,1.2,7.8,'hl'],
@@ -74,13 +75,21 @@ const V={
   extra:()=>stairU(11.5,3.3,4,2.1)+dv(10.5,0.6)+dv(11.5,1.2)+dv(11.5,6.4),
   pros:['Cầu thang ngăn giữa hai phòng ngủ, giảm tiếng ồn giữa phòng Gia chủ và phòng Ông bà','Dải giữa Nhà không còn thang nên Bếp khô và Ăn rộng 3,5m','Thang chữ U gọn (4,0 × 2,1m), lên từ hành lang, không lộ ra phòng Khách','Ông bà đi Vệ sinh theo hành lang, không qua phòng Khách'],
   cons:['Thang chữ U thay cho thang thẳng: có chiếu nghỉ, khó chuyển đồ cồng kềnh hơn','Hai phòng ngủ nhỏ hơn A (12,0 và 11,6 m² so với 12,5 và 13,2 m²)','Phòng Khách nông hơn một chút (sâu 4,0m)','Cửa sổ hai phòng ngủ vẫn quay ra chỗ đỗ ô tô'],
-  path:'Ông bà → Vệ sinh: theo hành lang, khoảng 6m.'}
+  path:'Ông bà → Vệ sinh: theo hành lang, khoảng 6m.'},
+ E:{name:'Phòng ngủ kín dọc bên Phải, Khách – Ăn – Bếp khô thông nhau',door:9.25,
+  rooms:[['Vệ sinh',7,0.3,1.7,2.7,'wc'],['Bếp khô',8.7,0.3,2.8,4,'bk',1],['Lối đi',7,3,1.7,1.3,'hl',1],['Ăn',7,4.3,4.5,3.7,'an',1],
+         ['Khách',7,8,4.5,4.3,'kh',1],['Ngủ Gia chủ',11.5,0.3,4,4.95,'ng'],['Ngủ Ông bà',11.5,7.35,4,4.95,'ng']],
+  extra:()=>stairU(11.5,5.25,4,2.1)+R(7,0.3,8.5,12,'none','#111')+R(7,0.3,1.7,2.7,'none','#111')+R(11.5,0.3,4,12,'none','#111')+
+    dh(7.4,3,0.8)+dv(11.5,4.35,0.8)+dv(11.5,7.45,0.8),
+  pros:['Khách – Ăn – Bếp khô thành một không gian mở rộng 4,5m, sâu gần 12m, thoáng kiểu Scandinavian','Bỏ hành lang nên hai phòng ngủ rộng (4,0 × 4,95m, gần 20 m² mỗi phòng)','Cầu thang vẫn ngăn giữa hai phòng ngủ, lên thẳng từ khu Ăn','Vệ sinh xoay dọc gọn ở góc sau Trái, cửa mở ra lối đi cạnh cửa hông'],
+  cons:['Không có tường ngăn: mùi và khói từ Bếp khô lan ra Ăn và Khách (cần hút mùi mạnh, nấu nặng để ở Bếp ướt)','Phòng Khách hẹp (4,5m), cửa chính lệch về bên Trái, không còn ở giữa Mặt tiền','Đi từ phòng ngủ tới Vệ sinh phải băng qua khu Ăn và Bếp khô; cửa Vệ sinh nhìn thẳng ra không gian chung','Phòng Ông bà ở góc trước Phải, hứng nắng chiều Mặt tiền và gần tiếng ồn đường'],
+  path:'Ông bà → Vệ sinh: qua khu Ăn và lối đi cạnh Bếp khô, khoảng 7m, không qua phòng Khách.'}
 };
 const keys=Object.keys(V);
 function render(){
   let k=new URLSearchParams(location.search).get('variant')||'A'; if(!V[k])k='A';
   const v=V[k];
-  document.getElementById('plan').innerHTML=base()+v.rooms.map(r=>room(...r)).join('')+v.extra()+fixed();
+  document.getElementById('plan').innerHTML=base(v.door)+v.rooms.map(r=>room(...r)).join('')+v.extra()+fixed(v.door);
   document.getElementById('label').textContent=`${k} (${v.name})`;
   document.getElementById('info').innerHTML=`<p class="tag">PROTOTYPE · số đo gần đúng, chưa trừ tường · ô xanh lá đậm = cửa</p>
    <h2>${k}. ${v.name}</h2>
